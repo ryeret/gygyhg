@@ -3415,118 +3415,6 @@ function handleProfileClick(action) {
   }
 }
 
-// ===== ФУНКЦИОНАЛ СВАЙПА ДЛЯ ОТКРЫТИЯ СТРАНИЦЫ ТОВАРОВ =====
-let startY, currentY, isSwipingUp = false;
-let productsPageVisible = false;
-const productsPage = document.getElementById('products-page');
-const bottomNav = document.querySelector('.bottom-nav');
-
-// Функция для показа страницы товаров
-function showProductsPage() {
-  productsPageVisible = true;
-  bottomNav.style.transition = 'transform 0.4s cubic-bezier(0.28, 0.11, 0.32, 1)';
-  bottomNav.style.transform = 'translateY(100%)';
-  
-  productsPage.style.display = 'block';
-  productsPage.style.opacity = '0';
-  productsPage.style.transform = 'translateY(100%)';
-  productsPage.style.transition = 'transform 0.4s cubic-bezier(0.28, 0.11, 0.32, 1), opacity 0.3s';
-  
-  setTimeout(() => {
-    productsPage.style.opacity = '1';
-    productsPage.style.transform = 'translateY(0)';
-  }, 10);
-  
-  // Загружаем товары при первом открытии
-  if (document.getElementById('productsFeed').children.length === 0) {
-    loadProductsData();
-  }
-}
-
-// Функция для скрытия страницы товаров
-function hideProductsPage() {
-  productsPageVisible = false;
-  productsPage.style.transform = 'translateY(100%)';
-  productsPage.style.opacity = '0';
-  
-  setTimeout(() => {
-    productsPage.style.display = 'none';
-    bottomNav.style.transform = 'translateY(0)';
-  }, 400);
-}
-
-// Инициализация обработчиков свайпов
-function initSwipeHandlers() {
-  // Обработчик свайпа вверх на главной странице
-  mainPage.addEventListener('touchstart', handleTouchStart, { passive: true });
-  mainPage.addEventListener('touchmove', handleTouchMove, { passive: false });
-  mainPage.addEventListener('touchend', handleTouchEnd);
-  
-  // Обработчик свайпа вниз на странице товаров
-  productsPage.addEventListener('touchstart', handleProductsTouchStart, { passive: true });
-  productsPage.addEventListener('touchmove', handleProductsTouchMove, { passive: false });
-  productsPage.addEventListener('touchend', handleProductsTouchEnd);
-}
-
-function handleTouchStart(e) {
-  if (window.scrollY <= 0 && !productsPageVisible) {
-    startY = e.touches[0].clientY;
-    isSwipingUp = true;
-  }
-}
-
-function handleTouchMove(e) {
-  if (!isSwipingUp) return;
-  
-  currentY = e.touches[0].clientY;
-  const deltaY = startY - currentY;
-  
-  if (deltaY > 50) {
-    e.preventDefault();
-    showProductsPage();
-    isSwipingUp = false;
-  }
-}
-
-function handleTouchEnd() {
-  isSwipingUp = false;
-}
-
-function handleProductsTouchStart(e) {
-  if (productsPageVisible && window.scrollY <= 0) {
-    startY = e.touches[0].clientY;
-    productsPage.classList.add('swipe-active');
-  }
-}
-
-function handleProductsTouchMove(e) {
-  if (!productsPageVisible) return;
-  
-  currentY = e.touches[0].clientY;
-  const deltaY = currentY - startY;
-  
-  if (window.scrollY <= 0) {
-    if (deltaY > 0) {
-      e.preventDefault();
-      // Плавное затемнение при свайпе
-      productsPage.style.opacity = `${1 - deltaY / 300}`;
-    }
-  }
-}
-
-function handleProductsTouchEnd() {
-  if (!productsPageVisible) return;
-  
-  const deltaY = currentY - startY;
-  productsPage.classList.remove('swipe-active');
-  
-  if (deltaY > 100 && window.scrollY <= 0) {
-    hideProductsPage();
-  } else {
-    // Возвращаем нормальную прозрачность если не досвайпнули
-    productsPage.style.opacity = '1';
-  }
-}
 
 // ===== ФУНКЦИИ ДЛЯ СТРАНИЦЫ ТОВАРОВ =====
 const productsData = [
@@ -4117,51 +4005,83 @@ function hidePaymentModal() {
   document.getElementById('payment-modal').classList.remove('show');
 }
 
-// ===== ДОБАВЛЕНИЕ ОБРАБОТЧИКОВ СВАЙПОВ =====
+// ===== ОБЪЕДИНЕННАЯ СИСТЕМА СВАЙПОВ =====
 let touchStartX = 0;
 let touchStartY = 0;
 let isHorizontalSwipe = false;
-const SWIPE_THRESHOLD = 50; // минимальное расстояние для определения свайпа
+let isVerticalSwipe = false;
+let productsPageVisible = false;
+const SWIPE_THRESHOLD = 50;
+const productsPage = document.getElementById('products-page');
+const bottomNav = document.querySelector('.bottom-nav');
 
 // Функция для определения направления свайпа
 function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
   const diffX = touchEndX - touchStartX;
   const diffY = touchEndY - touchStartY;
   
-  // Определяем тип свайпа (горизонтальный или вертикальный)
-  if (Math.abs(diffX) > Math.abs(diffY)) {
-    // Горизонтальный свайп
-    isHorizontalSwipe = true;
-    
-    if (Math.abs(diffX) > SWIPE_THRESHOLD) {
-      if (diffX > 0) {
-        // Свайп вправо
-        if (currentPage === 'main-page') {
-          // С главной вправо → переход в каюту
-          showPage(cabinetPage);
-          updateActiveNav(document.getElementById('cabinet-nav-item'));
-        } else if (currentPage === 'storage-page') {
-          // Со склада вправо → возврат на главную
-          showPage(mainPage);
-          updateActiveNav(null);
-        }
-      } else {
-        // Свайп влево
-        if (currentPage === 'main-page') {
-          // С главной влево → переход на склад
-          showPage(storagePage);
-          updateActiveNav(document.getElementById('storage-nav-item'));
-        } else if (currentPage === 'cabinet-page') {
-          // Из каюты влево → возврат на главную
-          showPage(mainPage);
-          updateActiveNav(null);
-        }
+  if (isHorizontalSwipe && Math.abs(diffX) > SWIPE_THRESHOLD) {
+    // Горизонтальные свайпы для навигации
+    if (diffX > 0) {
+      // Свайп вправо
+      if (currentPage === 'main-page') {
+        showPage(cabinetPage);
+        updateActiveNav(document.getElementById('cabinet-nav-item'));
+      } else if (currentPage === 'storage-page') {
+        showPage(mainPage);
+        updateActiveNav(null);
+      }
+    } else {
+      // Свайп влево
+      if (currentPage === 'main-page') {
+        showPage(storagePage);
+        updateActiveNav(document.getElementById('storage-nav-item'));
+      } else if (currentPage === 'cabinet-page') {
+        showPage(mainPage);
+        updateActiveNav(null);
       }
     }
-  } else {
-    // Вертикальный свайп - передаем управление оригинальной функции
-    isHorizontalSwipe = false;
+  } 
+  else if (isVerticalSwipe && Math.abs(diffY) > SWIPE_THRESHOLD) {
+    // Вертикальные свайпы для товаров
+    if (diffY < 0 && currentPage === 'main-page' && window.scrollY <= 0 && !productsPageVisible) {
+      // Свайп вверх на главной → открыть товары
+      showProductsPage();
+    }
   }
+}
+
+// Функция для показа страницы товаров
+function showProductsPage() {
+  productsPageVisible = true;
+  bottomNav.style.transition = 'transform 0.4s cubic-bezier(0.28, 0.11, 0.32, 1)';
+  bottomNav.style.transform = 'translateY(100%)';
+  
+  productsPage.style.display = 'block';
+  productsPage.style.opacity = '0';
+  productsPage.style.transform = 'translateY(100%)';
+  productsPage.style.transition = 'transform 0.4s cubic-bezier(0.28, 0.11, 0.32, 1), opacity 0.3s';
+  
+  setTimeout(() => {
+    productsPage.style.opacity = '1';
+    productsPage.style.transform = 'translateY(0)';
+  }, 10);
+  
+  if (document.getElementById('productsFeed').children.length === 0) {
+    loadProductsData();
+  }
+}
+
+// Функция для скрытия страницы товаров
+function hideProductsPage() {
+  productsPageVisible = false;
+  productsPage.style.transform = 'translateY(100%)';
+  productsPage.style.opacity = '0';
+  
+  setTimeout(() => {
+    productsPage.style.display = 'none';
+    bottomNav.style.transform = 'translateY(0)';
+  }, 400);
 }
 
 // Обработчик начала касания
@@ -4169,6 +4089,7 @@ function handleTouchStart(e) {
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
   isHorizontalSwipe = false;
+  isVerticalSwipe = false;
 }
 
 // Обработчик движения касания
@@ -4183,13 +4104,21 @@ function handleTouchMove(e) {
   // Определяем тип свайпа
   if (Math.abs(diffX) > Math.abs(diffY)) {
     isHorizontalSwipe = true;
+    isVerticalSwipe = false;
   } else {
     isHorizontalSwipe = false;
+    isVerticalSwipe = true;
   }
   
   // Если это горизонтальный свайп, предотвращаем вертикальную прокрутку
   if (Math.abs(diffX) > 10 && isHorizontalSwipe) {
     e.preventDefault();
+  }
+  
+  // Обработка свайпа вниз для закрытия товаров
+  if (productsPageVisible && isVerticalSwipe && diffY > 0 && window.scrollY <= 0) {
+    e.preventDefault();
+    productsPage.style.opacity = 1 - diffY / 300;
   }
 }
 
@@ -4199,28 +4128,37 @@ function handleTouchEnd(e) {
   
   const touchEndX = e.changedTouches[0].clientX;
   const touchEndY = e.changedTouches[0].clientY;
-  
-  // Определяем текущую страницу
+  const diffY = touchEndY - touchStartY;
+
+// Определяем текущую страницу
   let currentPage = '';
   if (mainPage.style.display !== 'none') currentPage = 'main-page';
   else if (cabinetPage.style.display !== 'none') currentPage = 'cabinet-page';
   else if (storagePage.style.display !== 'none') currentPage = 'storage-page';
   else if (treasurePage.style.display !== 'none') currentPage = 'treasure-page';
   
-  // Обрабатываем свайп только для основных страниц
+  // Обрабатываем горизонтальные свайпы
   if (currentPage && currentPage !== 'treasure-page') {
     handleSwipeGesture(currentPage, touchEndX, touchEndY);
+  }
+  
+  // Обработка свайпа вниз для закрытия товаров
+  if (productsPageVisible && isVerticalSwipe && diffY > 100 && window.scrollY <= 0) {
+    hideProductsPage();
+  } else if (productsPageVisible && isVerticalSwipe) {
+    productsPage.style.opacity = '1';
   }
   
   // Сбрасываем начальные координаты
   touchStartX = 0;
   touchStartY = 0;
   isHorizontalSwipe = false;
+  isVerticalSwipe = false;
 }
 
 // Добавляем обработчики свайпов ко всем страницам
 function initSwipeNavigation() {
-  const pages = [mainPage, cabinetPage, storagePage, treasurePage];
+  const pages = [mainPage, cabinetPage, storagePage, treasurePage, productsPage];
   
   pages.forEach(page => {
     if (page) {
@@ -4232,7 +4170,6 @@ function initSwipeNavigation() {
 }
 
 // Инициализация свайп-навигации после загрузки DOM
-// Добавьте эту строку в конец вашей функции DOMContentLoaded:
 initSwipeNavigation();
 </script>
 </body>
