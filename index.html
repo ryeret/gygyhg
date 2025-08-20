@@ -4005,7 +4005,8 @@ function hidePaymentModal() {
   document.getElementById('payment-modal').classList.remove('show');
 }
 
-// ===== ОБЪЕДИНЕННАЯ СИСТЕМА СВАЙПОВ =====
+
+// ===== ОБЪЕДИНЕННАЯ СИСТЕМА СВАЙПОВ С iOS-АНИМАЦИЯМИ =====
 let touchStartX = 0;
 let touchStartY = 0;
 let isHorizontalSwipe = false;
@@ -4015,8 +4016,44 @@ const SWIPE_THRESHOLD = 50;
 const productsPage = document.getElementById('products-page');
 const bottomNav = document.querySelector('.bottom-nav');
 
+// iOS-анимация перехода между страницами
+function iosPageTransition(newPage, oldPage, direction) {
+  return new Promise((resolve) => {
+    // Настройка анимации
+    const duration = 300;
+    const easing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    
+    // Позиции для анимации
+    const enterFrom = direction === 'right' ? '100%' : '-100%';
+    const exitTo = direction === 'right' ? '-100%' : '100%';
+    
+    // Устанавливаем начальные позиции
+    newPage.style.display = 'block';
+    newPage.style.transform = 'translateX(' + enterFrom + ')';
+    newPage.style.transition = 'transform ' + duration + 'ms ' + easing;
+    
+    oldPage.style.transform = 'translateX(' + exitTo + ')';
+    oldPage.style.transition = 'transform ' + duration + 'ms ' + easing;
+    
+    // Запускаем анимацию
+    setTimeout(() => {
+      newPage.style.transform = 'translateX(0)';
+      oldPage.style.transform = 'translateX(' + exitTo + ')';
+    }, 10);
+    
+    // Завершаем анимацию
+    setTimeout(() => {
+      oldPage.style.display = 'none';
+      oldPage.style.transform = 'translateX(0)';
+      oldPage.style.transition = '';
+      newPage.style.transition = '';
+      resolve();
+    }, duration);
+  });
+}
+
 // Функция для определения направления свайпа
-function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
+async function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
   const diffX = touchEndX - touchStartX;
   const diffY = touchEndY - touchStartY;
   
@@ -4025,19 +4062,19 @@ function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
     if (diffX > 0) {
       // Свайп вправо
       if (currentPage === 'main-page') {
-        showPage(cabinetPage);
+        await iosPageTransition(cabinetPage, mainPage, 'right');
         updateActiveNav(document.getElementById('cabinet-nav-item'));
       } else if (currentPage === 'storage-page') {
-        showPage(mainPage);
+        await iosPageTransition(mainPage, storagePage, 'right');
         updateActiveNav(null);
       }
     } else {
       // Свайп влево
       if (currentPage === 'main-page') {
-        showPage(storagePage);
+        await iosPageTransition(storagePage, mainPage, 'left');
         updateActiveNav(document.getElementById('storage-nav-item'));
       } else if (currentPage === 'cabinet-page') {
-        showPage(mainPage);
+        await iosPageTransition(mainPage, cabinetPage, 'left');
         updateActiveNav(null);
       }
     }
@@ -4051,12 +4088,15 @@ function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
   }
 }
 
-// Функция для показа страницы товаров
+// Функция для показа страницы товаров (iOS стиль)
 function showProductsPage() {
   productsPageVisible = true;
+  
+  // Анимация bottom nav
   bottomNav.style.transition = 'transform 0.4s cubic-bezier(0.28, 0.11, 0.32, 1)';
   bottomNav.style.transform = 'translateY(100%)';
   
+  // iOS анимация появления страницы товаров
   productsPage.style.display = 'block';
   productsPage.style.opacity = '0';
   productsPage.style.transform = 'translateY(100%)';
@@ -4072,15 +4112,24 @@ function showProductsPage() {
   }
 }
 
-// Функция для скрытия страницы товаров
+// Функция для скрытия страницы товаров (iOS стиль)
 function hideProductsPage() {
   productsPageVisible = false;
-  productsPage.style.transform = 'translateY(100%)';
+  
+  // iOS анимация скрытия
+
+
+productsPage.style.transform = 'translateY(100%)';
   productsPage.style.opacity = '0';
+  productsPage.style.transition = 'transform 0.4s cubic-bezier(0.28, 0.11, 0.32, 1), opacity 0.3s';
+  
+  // Возвращаем bottom nav
+  bottomNav.style.transform = 'translateY(0)';
   
   setTimeout(() => {
     productsPage.style.display = 'none';
-    bottomNav.style.transform = 'translateY(0)';
+    productsPage.style.transform = 'translateY(0)';
+    productsPage.style.opacity = '1';
   }, 400);
 }
 
@@ -4123,14 +4172,14 @@ function handleTouchMove(e) {
 }
 
 // Обработчик окончания касания
-function handleTouchEnd(e) {
+async function handleTouchEnd(e) {
   if (!touchStartX) return;
   
   const touchEndX = e.changedTouches[0].clientX;
   const touchEndY = e.changedTouches[0].clientY;
   const diffY = touchEndY - touchStartY;
 
-// Определяем текущую страницу
+  // Определяем текущую страницу
   let currentPage = '';
   if (mainPage.style.display !== 'none') currentPage = 'main-page';
   else if (cabinetPage.style.display !== 'none') currentPage = 'cabinet-page';
@@ -4139,7 +4188,7 @@ function handleTouchEnd(e) {
   
   // Обрабатываем горизонтальные свайпы
   if (currentPage && currentPage !== 'treasure-page') {
-    handleSwipeGesture(currentPage, touchEndX, touchEndY);
+    await handleSwipeGesture(currentPage, touchEndX, touchEndY);
   }
   
   // Обработка свайпа вниз для закрытия товаров
