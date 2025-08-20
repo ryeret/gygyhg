@@ -4006,88 +4006,6 @@ function hidePaymentModal() {
 }
 
 
-// ===== ОБЪЕДИНЕННАЯ СИСТЕМА СВАЙПОВ С iOS-АНИМАЦИЯМИ =====
-let touchStartX = 0;
-let touchStartY = 0;
-let isHorizontalSwipe = false;
-let isVerticalSwipe = false;
-let productsPageVisible = false;
-const SWIPE_THRESHOLD = 50;
-const productsPage = document.getElementById('products-page');
-const bottomNav = document.querySelector('.bottom-nav');
-
-// iOS-анимация перехода между страницами
-function iosPageTransition(newPage, oldPage, direction) {
-  return new Promise((resolve) => {
-    // Настройка анимации
-    const duration = 300;
-    const easing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    
-    // Позиции для анимации
-    const enterFrom = direction === 'right' ? '100%' : '-100%';
-    const exitTo = direction === 'right' ? '-100%' : '100%';
-    
-    // Устанавливаем начальные позиции
-    newPage.style.display = 'block';
-    newPage.style.transform = 'translateX(' + enterFrom + ')';
-    newPage.style.transition = 'transform ' + duration + 'ms ' + easing;
-    
-    oldPage.style.transform = 'translateX(' + exitTo + ')';
-    oldPage.style.transition = 'transform ' + duration + 'ms ' + easing;
-    
-    // Запускаем анимацию
-    setTimeout(() => {
-      newPage.style.transform = 'translateX(0)';
-      oldPage.style.transform = 'translateX(' + exitTo + ')';
-    }, 10);
-    
-    // Завершаем анимацию
-    setTimeout(() => {
-      oldPage.style.display = 'none';
-      oldPage.style.transform = 'translateX(0)';
-      oldPage.style.transition = '';
-      newPage.style.transition = '';
-      resolve();
-    }, duration);
-  });
-}
-
-// Функция для определения направления свайпа
-async function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
-  const diffX = touchEndX - touchStartX;
-  const diffY = touchEndY - touchStartY;
-  
-  if (isHorizontalSwipe && Math.abs(diffX) > SWIPE_THRESHOLD) {
-    // Горизонтальные свайпы для навигации
-    if (diffX > 0) {
-      // Свайп вправо
-      if (currentPage === 'main-page') {
-        await iosPageTransition(cabinetPage, mainPage, 'right');
-        updateActiveNav(document.getElementById('cabinet-nav-item'));
-      } else if (currentPage === 'storage-page') {
-        await iosPageTransition(mainPage, storagePage, 'right');
-        updateActiveNav(null);
-      }
-    } else {
-      // Свайп влево
-      if (currentPage === 'main-page') {
-        await iosPageTransition(storagePage, mainPage, 'left');
-        updateActiveNav(document.getElementById('storage-nav-item'));
-      } else if (currentPage === 'cabinet-page') {
-        await iosPageTransition(mainPage, cabinetPage, 'left');
-        updateActiveNav(null);
-      }
-    }
-  } 
-  else if (isVerticalSwipe && Math.abs(diffY) > SWIPE_THRESHOLD) {
-    // Вертикальные свайпы для товаров
-    if (diffY < 0 && currentPage === 'main-page' && window.scrollY <= 0 && !productsPageVisible) {
-      // Свайп вверх на главной → открыть товары
-      showProductsPage();
-    }
-  }
-}
-
 // Функция для показа страницы товаров (iOS стиль)
 function showProductsPage() {
   productsPageVisible = true;
@@ -4117,9 +4035,7 @@ function hideProductsPage() {
   productsPageVisible = false;
   
   // iOS анимация скрытия
-
-
-productsPage.style.transform = 'translateY(100%)';
+  productsPage.style.transform = 'translateY(100%)';
   productsPage.style.opacity = '0';
   productsPage.style.transition = 'transform 0.4s cubic-bezier(0.28, 0.11, 0.32, 1), opacity 0.3s';
   
@@ -4220,6 +4136,7 @@ function initSwipeNavigation() {
 
 // Инициализация свайп-навигации после загрузки DOM
 initSwipeNavigation();
+
 </script>
 </body>
 </html>
