@@ -4006,6 +4006,115 @@ function hidePaymentModal() {
 }
 
 
+// ===== ОБЪЕДИНЕННАЯ СИСТЕМА СВАЙПОВ С ПРАВИЛЬНЫМИ iOS-АНИМАЦИЯМИ =====
+let touchStartX = 0;
+let touchStartY = 0;
+let isHorizontalSwipe = false;
+let isVerticalSwipe = false;
+let productsPageVisible = false;
+const SWIPE_THRESHOLD = 50;
+const productsPage = document.getElementById('products-page');
+const bottomNav = document.querySelector('.bottom-nav');
+
+// iOS-анимация перехода между страницами
+function iosPageTransition(newPage, oldPage, direction) {
+  return new Promise((resolve) => {
+    const duration = 300;
+    const easing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    
+    // Определяем направление анимации в зависимости от целевой страницы
+    let enterFrom, exitTo;
+    
+    if (newPage.id === 'cabinet-page') {
+      // Каюта появляется слева
+      enterFrom = '-100%';
+      exitTo = '30%';
+    } else if (newPage.id === 'storage-page') {
+      // Склад появляется справа
+      enterFrom = '100%';
+      exitTo = '-30%';
+    } else if (newPage.id === 'main-page') {
+      // Возврат на главную - противоположное направление
+      if (oldPage.id === 'cabinet-page') {
+        enterFrom = '-100%'; // Главная появляется слева (из каюты)
+        exitTo = '30%';
+      } else if (oldPage.id === 'storage-page') {
+        enterFrom = '100%'; // Главная появляется справа (из склада)
+        exitTo = '-30%';
+      }
+    }
+    
+    // Подготовка новой страницы
+    newPage.style.display = 'block';
+    newPage.style.transform = 'translateX(' + enterFrom + ')';
+    newPage.style.transition = 'transform ' + duration + 'ms ' + easing;
+    newPage.style.zIndex = '100';
+    
+    // Анимация текущей страницы
+    oldPage.style.transition = 'transform ' + duration + 'ms ' + easing;
+    oldPage.style.transform = 'translateX(' + exitTo + ')';
+    oldPage.style.opacity = '0.7';
+    
+    // Запуск анимации
+    setTimeout(() => {
+      newPage.style.transform = 'translateX(0)';
+      oldPage.style.transform = 'translateX(' + exitTo + ')';
+    }, 10);
+    
+    // Завершение анимации
+    setTimeout(() => {
+      oldPage.style.display = 'none';
+      oldPage.style.transform = 'translateX(0)';
+      oldPage.style.opacity = '1';
+      oldPage.style.transition = '';
+      oldPage.style.zIndex = '';
+      
+      newPage.style.transition = '';
+      newPage.style.zIndex = '';
+      
+      resolve();
+    }, duration);
+  });
+}
+
+// Функция для определения направления свайпа
+async function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+  
+  if (isHorizontalSwipe && Math.abs(diffX) > SWIPE_THRESHOLD) {
+    // Горизонтальные свайпы для навигации
+    if (diffX > 0) {
+      // Свайп вправо → переход в каюту (слева)
+      if (currentPage === 'main-page') {
+        await iosPageTransition(cabinetPage, mainPage, 'right');
+        updateActiveNav(document.getElementById('cabinet-nav-item'));
+      } else if (currentPage === 'storage-page') {
+        // Со склада вправо → возврат на главную
+        await iosPageTransition(mainPage, storagePage, 'right');
+        updateActiveNav(null);
+      }
+    } else {
+      // Свайп влево → переход на склад (справа)
+      if (currentPage === 'main-page') {
+        await iosPageTransition(storagePage, mainPage, 'left');
+        updateActiveNav(document.getElementById('storage-nav-item'));
+      } else if (currentPage === 'cabinet-page') {
+        // Из каюты влево → возврат на главную
+        await iosPageTransition(mainPage, cabinetPage, 'left');
+        updateActiveNav(null);
+      }
+    }
+  } 
+  else if (isVerticalSwipe && Math.abs(diffY) > SWIPE_THRESHOLD) {
+    // Вертикальные свайпы для товаров
+    if (diffY < 0 && currentPage === 'main-page' && window.scrollY <= 0 && !productsPageVisible) {
+      // Свайп вверх на главной → открыть товары
+      showProductsPage();
+    }
+  }
+}
+
 // Функция для показа страницы товаров (iOS стиль)
 function showProductsPage() {
   productsPageVisible = true;
@@ -4136,7 +4245,6 @@ function initSwipeNavigation() {
 
 // Инициализация свайп-навигации после загрузки DOM
 initSwipeNavigation();
-
 </script>
 </body>
 </html>
