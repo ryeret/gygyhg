@@ -4120,6 +4120,7 @@ function hidePaymentModal() {
 // ===== ДОБАВЛЕНИЕ ОБРАБОТЧИКОВ СВАЙПОВ =====
 let touchStartX = 0;
 let touchStartY = 0;
+let isHorizontalSwipe = false;
 const SWIPE_THRESHOLD = 50; // минимальное расстояние для определения свайпа
 
 // Функция для определения направления свайпа
@@ -4127,32 +4128,39 @@ function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
   const diffX = touchEndX - touchStartX;
   const diffY = touchEndY - touchStartY;
   
-  // Игнорируем вертикальные свайпы (они для страницы товаров)
-  if (Math.abs(diffY) > Math.abs(diffX)) {
-    return;
-  }
-  
-  // Определяем направление горизонтального свайпа
-  if (Math.abs(diffX) > SWIPE_THRESHOLD) {
-    if (diffX > 0) {
-      // Свайп вправо
-      if (currentPage === 'cabinet-page') {
-        // Из каюты вправо → возврат на главную
-        showPage(mainPage);
-        updateActiveNav(null);
-      } else if (currentPage === 'storage-page') {
-        // Со склада вправо → возврат на главную
-        showPage(mainPage);
-        updateActiveNav(null);
-      }
-    } else {
-      // Свайп влево
-      if (currentPage === 'main-page') {
-        // С главной влево → переход на склад
-        showPage(storagePage);
-        updateActiveNav(document.getElementById('storage-nav-item'));
+  // Определяем тип свайпа (горизонтальный или вертикальный)
+  if (Math.abs(diffX) > Math.abs(diffY)) {
+    // Горизонтальный свайп
+    isHorizontalSwipe = true;
+    
+    if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+      if (diffX > 0) {
+        // Свайп вправо
+        if (currentPage === 'main-page') {
+          // С главной вправо → переход в каюту
+          showPage(cabinetPage);
+          updateActiveNav(document.getElementById('cabinet-nav-item'));
+        } else if (currentPage === 'storage-page') {
+          // Со склада вправо → возврат на главную
+          showPage(mainPage);
+          updateActiveNav(null);
+        }
+      } else {
+        // Свайп влево
+        if (currentPage === 'main-page') {
+          // С главной влево → переход на склад
+          showPage(storagePage);
+          updateActiveNav(document.getElementById('storage-nav-item'));
+        } else if (currentPage === 'cabinet-page') {
+          // Из каюты влево → возврат на главную
+          showPage(mainPage);
+          updateActiveNav(null);
+        }
       }
     }
+  } else {
+    // Вертикальный свайп - передаем управление оригинальной функции
+    isHorizontalSwipe = false;
   }
 }
 
@@ -4160,6 +4168,29 @@ function handleSwipeGesture(currentPage, touchEndX, touchEndY) {
 function handleTouchStart(e) {
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
+  isHorizontalSwipe = false;
+}
+
+// Обработчик движения касания
+function handleTouchMove(e) {
+  if (!touchStartX) return;
+  
+  const currentX = e.touches[0].clientX;
+  const currentY = e.touches[0].clientY;
+  const diffX = currentX - touchStartX;
+  const diffY = currentY - touchStartY;
+  
+  // Определяем тип свайпа
+  if (Math.abs(diffX) > Math.abs(diffY)) {
+    isHorizontalSwipe = true;
+  } else {
+    isHorizontalSwipe = false;
+  }
+  
+  // Если это горизонтальный свайп, предотвращаем вертикальную прокрутку
+  if (Math.abs(diffX) > 10 && isHorizontalSwipe) {
+    e.preventDefault();
+  }
 }
 
 // Обработчик окончания касания
@@ -4184,6 +4215,7 @@ function handleTouchEnd(e) {
   // Сбрасываем начальные координаты
   touchStartX = 0;
   touchStartY = 0;
+  isHorizontalSwipe = false;
 }
 
 // Добавляем обработчики свайпов ко всем страницам
@@ -4193,18 +4225,15 @@ function initSwipeNavigation() {
   pages.forEach(page => {
     if (page) {
       page.addEventListener('touchstart', handleTouchStart, { passive: true });
+      page.addEventListener('touchmove', handleTouchMove, { passive: false });
       page.addEventListener('touchend', handleTouchEnd, { passive: true });
     }
   });
 }
 
 // Инициализация свайп-навигации после загрузки DOM
-document.addEventListener('DOMContentLoaded', function() {
-  // ... ваш существующий код ...
-  
-  // Добавляем эту строку в конец функции:
-  initSwipeNavigation();
-});
+// Добавьте эту строку в конец вашей функции DOMContentLoaded:
+initSwipeNavigation();
 </script>
 </body>
 </html>
